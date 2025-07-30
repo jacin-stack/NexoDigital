@@ -107,10 +107,35 @@ function showMessage(form, message, isSuccess = false) {
     }
 }
 
+// Función para enviar email usando Spring Boot backend
+async function sendEmail(formData) {
+    try {
+        const response = await fetch('http://localhost:8081/api/contact/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                nombre: formData.get('nombre') || formData.get('modal-nombre'),
+                email: formData.get('email') || formData.get('modal-email'),
+                telefono: formData.get('telefono') || null,
+                servicio: formData.get('servicio') || null,
+                mensaje: formData.get('mensaje') || formData.get('modal-mensaje')
+            })
+        });
+
+        const result = await response.json();
+        return result;
+    } catch (error) {
+        console.error('Error enviando email:', error);
+        return { success: false, message: 'Error de conexión con el servidor' };
+    }
+}
+
 // Formulario principal de contacto
 const contactForm = document.getElementById('contact-form');
 if (contactForm) {
-    contactForm.addEventListener('submit', function (e) {
+    contactForm.addEventListener('submit', async function (e) {
         e.preventDefault();
 
         const formData = new FormData(this);
@@ -151,16 +176,32 @@ if (contactForm) {
             return;
         }
 
-        // Simular envío (aquí iría la lógica real de envío)
-        showMessage(this, '¡Mensaje enviado correctamente! Nos pondremos en contacto contigo en menos de 24 horas.', true);
-        this.reset();
+        // Mostrar indicador de carga
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+        submitBtn.disabled = true;
+
+        // Enviar email
+        const result = await sendEmail(formData);
+
+        if (result.success) {
+            showMessage(this, '¡Mensaje enviado correctamente! Nos pondremos en contacto contigo en menos de 24 horas.', true);
+            this.reset();
+        } else {
+            showMessage(this, result.message || 'Error al enviar el mensaje. Por favor, inténtalo de nuevo.');
+        }
+
+        // Restaurar botón
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
     });
 }
 
 // Formulario modal
 const modalContactForm = document.getElementById('modal-contact-form');
 if (modalContactForm) {
-    modalContactForm.addEventListener('submit', function (e) {
+    modalContactForm.addEventListener('submit', async function (e) {
         e.preventDefault();
 
         const formData = new FormData(this);
@@ -189,12 +230,28 @@ if (modalContactForm) {
             return;
         }
 
-        // Simular envío
-        showMessage(this, '¡Consulta enviada! Te contactaremos en menos de 24 horas.', true);
-        this.reset();
-        setTimeout(() => {
-            closeModal('contact-modal');
-        }, 2000);
+        // Mostrar indicador de carga
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+        submitBtn.disabled = true;
+
+        // Enviar email
+        const result = await sendEmail(formData);
+
+        if (result.success) {
+            showMessage(this, '¡Consulta enviada! Te contactaremos en menos de 24 horas.', true);
+            this.reset();
+            setTimeout(() => {
+                closeModal('contact-modal');
+            }, 2000);
+        } else {
+            showMessage(this, result.message || 'Error al enviar la consulta. Por favor, inténtalo de nuevo.');
+        }
+
+        // Restaurar botón
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
     });
 }
 
